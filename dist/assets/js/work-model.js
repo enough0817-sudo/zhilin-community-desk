@@ -1,10 +1,19 @@
 (function(root){
 const catalog=typeof module!=='undefined'?require('./work-catalog.js'):root.WorkCatalog;
+const setup=typeof module!=='undefined'?require('./desktop-setup-model.js'):root.DesktopSetupModel;
 const clone=v=>JSON.parse(JSON.stringify(v));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
 const handover=['账号','待办','在途事项','资料归档确认','印章','财务凭证','银行账户','税务资料','线上身份与账号','对外关系与惯例','维修资金离任审计（适用时）','合同台账','物业合同与标准库','电子密钥与数字证书'];
 function create(storage,context,clock=()=>Date.now()){
- const ctx=()=>context();const key=()=>`zhilin-business-v1-${ctx().committee.id}`;
+ const ctx=()=>context();
+ function checkDesktopLedger(data,type,values){
+  if(!ctx().desktop)return;
+  if(!data.account)throw Error('请先完成第 7 件建账');
+  if(type!=='流水账')return;
+  if(values.direction==='期初余额')throw Error('期初余额由第 7 件建账登记');
+  if(values.date&&values.date<data.account.start)throw Error('记账日期不得早于账期起始日');
+ }
+ const key=()=>`zhilin-business-v1-${ctx().committee.id}`;
  function read(){let x;try{x=JSON.parse(storage.getItem(key())||'null')}catch{}return x||{records:[],queries:[],events:[]}}
  function save(x){storage.setItem(key(),JSON.stringify(x))}
  function def(id,type){const m=catalog.modules.find(x=>x.id===id);if(!m)throw Error('未找到模块');return {...m,...(m.types?.[type||m.tabs[0]]||{})}}
@@ -17,6 +26,7 @@ function create(storage,context,clock=()=>Date.now()){
    if(f.key==='lastFour'&&!/^\d{4}$/.test(v))throw Error('手机后四位须为四位数字');
    if(f.type==='select'&&!f.options.includes(v))throw Error('请选择有效的'+f.label);
    if(f.type==='date'&&!/^\d{4}-\d{2}-\d{2}$/.test(v))throw Error('请填写有效日期');
+   if(f.type==='members'&&(!Array.isArray(v)||v.some(id=>!ctx().committee.members.some(m=>m.id===id&&m.role!=='候补委员'))))throw Error('请选择本届协办委员');
    if(f.type==='member'&&!ctx().committee.members.some(m=>m.id===v&&m.role!=='候补委员'))throw Error('请选择本届正式委员');
    if(f.type==='meeting'&&!data.records.some(r=>r.id===v&&r.module==='A4'&&['已定稿','已归档'].includes(r.status)))throw Error('请选择已定稿的内部会议');
    if(f.type==='room'&&!data.records.some(r=>r.id===v&&r.module==='A2'&&r.type==='楼盘表'&&r.status==='已锁定'))throw Error('请先在楼盘表核对锁定该房屋');
@@ -27,9 +37,9 @@ function create(storage,context,clock=()=>Date.now()){
  function audit(data,r,action,details){const e={at:clock(),actor:ctx().phone,action,details:clone(details||{})};r.history.push(e);data.events.push({...e,id:r.id})}
  function make(data,module,type,values,source){const d=def(module,type);if(d.readonly)throw Error('此模块仅查看');const r={id:uid(),module,type:type||d.tabs?.[0]||'',title:values.title,fields:clone(values),stage:0,status:'草稿',createdBy:ctx().phone,createdAt:clock(),number:module+'-'+String(data.records.filter(x=>x.module===module).length+1).padStart(4,'0'),history:[],source:source||null};if(module==='A14')r.checklist=String(values.actions||'').split('\n').filter(x=>x.trim()).map(text=>({text,done:false}));if(module==='A12')r.checklist=handover.map(text=>({text,done:false}));data.records.push(r);audit(data,r,source?'由来源生成草稿':'新建草稿',values);return r}
  function duplicate(data,module,type,v,except){if(module==='A2'&&type==='楼盘表'&&data.records.some(r=>r.id!==except&&r.module===module&&r.type===type&&r.status!=='已作废'&&['building','unit','room'].every(k=>r.fields[k]===v[k])))throw Error('楼栋、单元、房号重复，请核对');if(module==='A17'&&type==='职责分工'&&data.records.some(r=>r.id!==except&&r.module===module&&r.type===type&&r.status!=='已作废'&&r.fields.duty===v.duty))throw Error('该职责已有分工，请在原记录维护，主办只能有一人')}
- function add(module,type,values){actor();const data=read(),d=def(module,type);if(!String(values.title||'').trim())throw Error('请填写名称');validate(d.fields,values,data);duplicate(data,module,type,values);if(values.start&&values.end&&values.end<values.start)throw Error('结束日期不能早于开始日期');const r=make(data,module,type,values);save(data);return r}
- function edit(id,values){actor();const data=read(),r=data.records.find(x=>x.id===id);if(!r||r.stage!==0||r.status==='已作废')throw Error('已提交记录不能覆盖修改，请补充材料或登记作废原因');validate(def(r.module,r.type).fields,values,data);duplicate(data,r.module,r.type,values,id);const before=clone(r.fields);r.fields={...r.fields,...clone(values)};r.title=values.title;if(r.module==='A14')r.checklist=String(values.actions).split('\n').filter(x=>x.trim()).map(text=>({text,done:false}));audit(data,r,'修改草稿',{before,after:r.fields});save(data);return r}
- function next(id,values={}){const data=read(),r=data.records.find(x=>x.id===id);if(!r||r.status==='已作废'||r.status==='已撤回')throw Error('记录不可继续办理');const d=def(r.module,r.type),s=d.steps?.[r.stage];if(!s)throw Error('当前流程已完成');allow(s.role,r);validate(d.fields,r.fields,data);validate(s.fields,values,data);const v={...r.fields,...values};
+ function add(module,type,values){actor();const data=read(),d=def(module,type);if(module==='A7')checkDesktopLedger(data,type,values);if(!String(values.title||'').trim())throw Error('请填写名称');validate(d.fields,values,data);duplicate(data,module,type,values);if(values.start&&values.end&&values.end<values.start)throw Error('结束日期不能早于开始日期');const r=make(data,module,type,values);save(data);return r}
+ function edit(id,values){actor();const data=read(),r=data.records.find(x=>x.id===id);if(!r||r.stage!==0||r.status==='已作废')throw Error('已提交记录不能覆盖修改，请补充材料或登记作废原因');if(r.module==='A7')checkDesktopLedger(data,r.type,values);validate(def(r.module,r.type).fields,values,data);duplicate(data,r.module,r.type,values,id);const before=clone(r.fields);r.fields={...r.fields,...clone(values)};r.title=values.title;if(r.module==='A14')r.checklist=String(values.actions).split('\n').filter(x=>x.trim()).map(text=>({text,done:false}));audit(data,r,'修改草稿',{before,after:r.fields});save(data);return r}
+ function next(id,values={}){const data=read(),r=data.records.find(x=>x.id===id);if(!r||r.status==='已作废'||r.status==='已撤回')throw Error('记录不可继续办理');const d=def(r.module,r.type),s=d.steps?.[r.stage];if(!s)throw Error('当前流程已完成');allow(s.role,r);if(r.module==='A7'&&r.stage===0)checkDesktopLedger(data,r.type,r.fields);validate(d.fields,r.fields,data);validate(s.fields,values,data);const v={...r.fields,...values};
   if(r.module==='A4'&&r.stage===1&&+v.attendees>ctx().committee.members.filter(m=>m.role!=='候补委员').length)throw Error('到会人数不能超过本届正式委员人数');
   if(r.module==='A4'&&r.stage===2){const base=ctx().committee.members.filter(m=>m.role!=='候补委员').length;if(+v.attendees<=base/2)throw Error('出席未过半，不能进入表决定稿，请登记改期');if(['agree','disagree','abstain','unvoted'].reduce((a,k)=>a+Number(v[k]),0)!==+v.attendees)throw Error('四类表决人数之和须等于到会正式委员数')}
   if(r.module==='A6'&&r.stage===2&&(+v.paperReturned>+v.paperIssued||+v.digitalReturned>+v.digitalIssued))throw Error('回收张数不能超过发出张数');
@@ -48,12 +58,52 @@ function create(storage,context,clock=()=>Date.now()){
  function cancel(id,reason){const data=read(),r=data.records.find(x=>x.id===id);allow('leader',r);if(!String(reason||'').trim())throw Error('请填写原因');if(r.module==='A18')throw Error('印章记录不能作废删除，请走停用或更正登记');r.status=r.module==='A11'?'已撤回':'已作废';audit(data,r,'撤回 / 作废',{reason});save(data)}
  function tick(id,index,done,note){actor();const data=read(),r=data.records.find(x=>x.id===id);if(!r?.checklist?.[index])throw Error('找不到清单项');if(!['执行中','交接中'].includes(r.status))throw Error('请先启动办理清单');if(!String(note||'').trim())throw Error('请记录办理或移交说明');r.checklist[index]={...r.checklist[index],done,note};audit(data,r,'清单办理',{index,done,note});save(data)}
  function returnDraft(id,reason){const data=read(),r=data.records.find(x=>x.id===id);allow('leader',r);if(!reason?.trim())throw Error('请填写退回原因');if(r.links?.length||['已归档','公示中','已附证明','已发文','已送达','已生效','已纳管','已入账','已结算','已作废','已撤回','已撤销','已锁定'].includes(r.status))throw Error('该状态不能退回草稿，请保留记录并走更正或撤回');audit(data,r,'退回草稿',{reason,previousStatus:r.status});r.stage=0;r.status='草稿';save(data)}
- function report(values){allow('leader');const data=read();validate([{key:'start',label:'开始日期',type:'date',required:true},{key:'end',label:'结束日期',type:'date',required:true},{key:'meetingId',label:'审议会议',type:'meeting',required:true}],values,data);if(values.end<values.start)throw Error('结束日期不能早于开始日期');const m=data.records.find(r=>r.id===values.meetingId);if(!m.fields.agenda.includes('共有资金'))throw Error('会议议程须含共有资金审议');const rows=data.records.filter(r=>r.module==='A7'&&r.type==='流水账'&&r.stage>0&&r.status!=='已作废'&&r.fields.date<=values.end);const amount=r=>Math.round(Number(r.fields.amount)*100)*(r.fields.direction==='支出'?-1:1);const opening=rows.filter(r=>r.fields.date<values.start||r.fields.direction==='期初余额').reduce((a,r)=>a+amount(r),0);const period=rows.filter(r=>r.fields.date>=values.start&&r.fields.direction!=='期初余额');const closing=opening+period.reduce((a,r)=>a+amount(r),0);const body=['共有资金收支公示（待人工核对）','期间：'+values.start+' 至 '+values.end,'期初账面结余：'+(opening/100).toFixed(2)+' 元',...period.map(r=>[r.fields.date,r.title,r.fields.direction,r.fields.amount+' 元',r.fields.voucher||'待补凭证号'].join(' ｜ ')),'期末账面结余：'+(closing/100).toFixed(2)+' 元','账面结余不代表银行余额；本演示不会对外发布。'].join('\n');const r=make(data,'A11','',{title:values.start+' 至 '+values.end+' 共有资金公示',kind:'法定公示',visibility:'公开',body,meetingId:values.meetingId},null);r.sourceRecords=period.map(r=>r.id);save(data);return r}
+ function report(values){allow('leader');const data=read();validate([{key:'start',label:'开始日期',type:'date',required:true},{key:'end',label:'结束日期',type:'date',required:true},{key:'meetingId',label:'审议会议',type:'meeting',required:true}],values,data);if(values.end<values.start)throw Error('结束日期不能早于开始日期');
+ if(ctx().desktop&&data.account&&values.start<data.account.start)throw Error('公示起始日不得早于账期起始日');
+ const m=data.records.find(r=>r.id===values.meetingId);if(!m.fields.agenda.includes('共有资金'))throw Error('会议议程须含共有资金审议');const rows=data.records.filter(r=>r.module==='A7'&&r.type==='流水账'&&r.stage>0&&!['已作废','已撤回'].includes(r.status)&&r.fields.date<=values.end&&(!ctx().desktop||!data.account||(r.fields.date>=data.account.start&&r.fields.direction!=='期初余额')));const amount=r=>Math.round(Number(r.fields.amount)*100)*(r.fields.direction==='支出'?-1:1);const opening=(ctx().desktop&&data.account?data.account.openingCents:0)+rows.filter(r=>r.fields.date<values.start||r.fields.direction==='期初余额').reduce((a,r)=>a+amount(r),0);const period=rows.filter(r=>r.fields.date>=values.start&&r.fields.direction!=='期初余额');const closing=opening+period.reduce((a,r)=>a+amount(r),0);const body=['共有资金收支公示（待人工核对）','期间：'+values.start+' 至 '+values.end,'期初账面结余：'+(opening/100).toFixed(2)+' 元',...period.map(r=>[r.fields.date,r.title,r.fields.direction,r.fields.amount+' 元',r.fields.voucher||'待补凭证号'].join(' ｜ ')),'期末账面结余：'+(closing/100).toFixed(2)+' 元','账面结余不代表银行余额；本演示不会对外发布。'].join('\n');const r=make(data,'A11','',{title:values.start+' 至 '+values.end+' 共有资金公示',kind:'法定公示',visibility:'公开',body,meetingId:values.meetingId},null);r.sourceRecords=period.map(r=>r.id);save(data);return r}
  function query(text){actor();const data=read();data.queries.push({id:uid(),actor:ctx().phone,text,at:clock(),category:/合同|物业/.test(text)?'物业与合同':/会议|表决/.test(text)?'会议与表决':'其他',result:'本地库暂未收录'});save(data)}
  function removeQuery(id){const data=read();data.queries=data.queries.filter(q=>q.id!==id||q.actor!==ctx().phone);save(data)}
+ function importRooms(lines){actor();const data=read();const rows=String(lines).split('\n').filter(x=>x.trim()).map(x=>x.split(/[,，\t]/).map(s=>s.trim()));if(!rows.length||rows.length>500)throw Error('请填写 1 至 500 行房屋');if(rows.some(x=>x.length!==3||x.some(v=>!v)))throw Error('每行须填写楼栋、单元、房号');const created=[];for(const [building,unit,room] of rows){const v={title:building+' '+unit+' '+room,building,unit,room,propertyType:'住宅'};duplicate(data,'A2','楼盘表',v);created.push(make(data,'A2','楼盘表',v))}save(data);return created}
+ function lockRooms(){allow('leader');const data=read();const rows=data.records.filter(r=>r.module==='A2'&&r.type==='楼盘表'&&r.status==='草稿');if(!rows.length)throw Error('没有待核对房屋');rows.forEach(r=>validate(def('A2','楼盘表').fields,r.fields,data));for(const r of rows){r.stage=1;r.status='已锁定';audit(data,r,'批量核对锁定',r.fields)}save(data)}
+ function configureReadiness(values){allow('leader');const data=read();const previous=data.readiness||{};const next={...previous,...values};if(values.totalRooms!==undefined&&(!Number.isInteger(+values.totalRooms)||+values.totalRooms<1))throw Error('房屋总数须为正整数');if(values.exclusions){for(const [id,v] of Object.entries(values.exclusions)){if(!['property','seals'].includes(id))throw Error('此项不能设为不适用');if(v&&!String(v.reason||'').trim())throw Error('请填写不适用原因')}}if(values.sealsConfirmed){const seals=data.records.filter(r=>r.module==='A18'&&r.type==='印章台账'&&r.status==='使用中');if(!seals.length)throw Error('请先登记使用中的印章');next.sealsFingerprint=seals.map(r=>r.id+':'+r.fields.custodian).sort().join('|')}data.readiness=next;data.events.push({at:clock(),actor:ctx().phone,action:'更新建档配置',details:{before:previous,after:next}});save(data)}
+ function logDesktopAccountChange(key,before,after,receiptLabel){
+  const {committee,member,phone}=actor();
+  if(setup.missingPrereqs(committee).length||!setup.canAccount(committee,member,phone))throw Error('当前无建账权限');
+  const labels=new Map([...setup.accountFields,['receipt',receiptLabel]]);
+  if(!labels.has(key))throw Error('无法记录此字段');
+  const data=read();
+  if(data.account)throw Error('本届账套已完成');
+  const shown=value=>key==='number'?setup.mask(value):setup.clean(value);
+  data.events.push({at:clock(),actor:phone,action:'建账字段修改',details:{label:labels.get(key),before:shown(before),after:shown(after)}});
+  save(data);
+ }
+ function saveDesktopAccount(values){
+  const {committee,member,phone}=actor();
+  const missing=setup.missingPrereqs(committee);
+  if(missing.length)throw Error('请先完成'+missing.map(([,label])=>label).join('、'));
+  if(!setup.canAccount(committee,member,phone))throw Error('仅主任、副主任或财务主办可建账');
+  const data=read();
+  if(data.account)throw Error('本届已有账套，请查看现有账户');
+  const value=Object.fromEntries(['bank','name','number','receipt','online','opened','kind','start','opening','handler','budget'].map(key=>[key,setup.clean(values[key])]));
+  value.credential=values.credential?{key:setup.clean(values.credential.key),type:setup.clean(values.credential.type),name:setup.clean(values.credential.name),...(values.credential.demo?{demo:true}:{})}:null;
+  value.checks=values.checks||{};
+  for(const key of ['income','expenses'])value[key]=[...new Set((Array.isArray(values[key])?values[key]:[]).map(setup.clean).filter(Boolean))];
+  for(let step=0;step<4;step++)setup.validateAccountStep(step,value,committee);
+  const {opening,checks,...fields}=value;
+  const account={...fields,id:uid(),openingCents:setup.cents(opening),createdAt:clock(),createdBy:phone,status:'已建账'};
+  if(account.credential){
+    const archive=make(data,'A2','档案',{title:account.credential.name,category:'证照与资质（ZZ）',categoryCode:'ZZ',archiveSource:'A7 建账带入',custodian:member.id,visibility:'仅内部',evidence:[account.credential],knowledgeExcluded:true},account.id);
+    archive.stage=1;archive.status='已归档';account.archiveId=archive.id;
+    audit(data,archive,'建账凭证归档',{accountId:account.id,categoryCode:'ZZ'});
+  }
+  data.account=account;
+  data.events.push({at:clock(),actor:phone,action:'完成建账',id:account.id,details:{archiveId:account.archiveId,accountNumber:setup.mask(account.number)}});
+  save(data);
+  return account;
+ }
  function pending(){return read().records.filter(r=>!['已归档','已作废','已撤回','已办结','已生效','已锁定','已停用','已撤权','已评估','已撤销','有效中'].includes(r.status)&&!(r.module==='A10'&&r.status==='已纳管')&&!(r.module==='A18'&&r.type==='印章台账'&&r.status==='使用中')).sort((a,b)=>(a.fields.due||a.fields.end||'9999').localeCompare(b.fields.due||b.fields.end||'9999'))}
  function exportLog(module){actor();const data=read();data.events.push({actor:ctx().phone,at:clock(),action:'导出台账',module});save(data);return data.records.filter(r=>r.module===module)}
- return {returnDraft,report,read,def,add,edit,next,supplement,cancel,tick,query,removeQuery,pending,exportLog,validate,allow};
+ return {saveDesktopAccount,logDesktopAccountChange,importRooms,lockRooms,configureReadiness,returnDraft,report,read,def,add,edit,next,supplement,cancel,tick,query,removeQuery,pending,exportLog,validate,allow};
 }
 const api={create,handover};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.WorkModel=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

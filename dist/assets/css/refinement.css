@@ -1,4 +1,4 @@
-/* 智邻：灰白工作界面，品牌色只用于操作与定位。 */
+/* ML.AIR：灰白工作界面，品牌色只用于操作与定位。 */
 :root{--bg:#fafafa;--side:#f5f5f5;--paper:#fff;--ink:#25282c;--muted:#62666d;--line:#e4e5e7;--green:#245fcc;--pale:#eef4ff;--accent:#245fcc;--brand-gradient:linear-gradient(110deg,#007f8d,#235fd0 60%,#6540d0);--shadow:0 8px 28px #00000008}
 body{font-size:15px;line-height:1.7;background:var(--bg);color:var(--ink)}
 h1,.a0-content h1,.a0-login h1{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-weight:600;letter-spacing:-.5px;line-height:1.45}

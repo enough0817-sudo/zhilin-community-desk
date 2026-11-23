@@ -1,0 +1,9 @@
+[build]
+  publish = "dist"
+
+# Keep independent HTML URLs as authored; do not rewrite them into SPA routes.
+[build.processing]
+  skip_processing = true
+
+[build.processing.html]
+  pretty_urls = false

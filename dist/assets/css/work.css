@@ -3,3 +3,254 @@ body{min-width:1080px}.shell{grid-template-columns:238px minmax(0,1fr)}.sidebar{
 
 /* Pending work first; input stays in the lower part of the home page. */
 .work-home{display:flex;flex-direction:column;min-height:calc(100vh - 150px);box-sizing:border-box}.work-home .section-line{margin-top:0}.home-input-area{margin-top:auto;padding-top:40px}.home-input-area .shortcuts{margin-bottom:0}.work-home>.work-deferred{margin-top:24px;margin-bottom:24px}
+.setup-panel{margin:24px 0 40px;padding:24px;border:1px solid #e1e3e6;border-radius:12px;background:#fff}.setup-panel .page-head{margin:0}.setup-panel h2{margin:0}.setup-panel progress{display:block;width:100%;height:7px;accent-color:#2464bd;margin:12px 0 20px}.setup-row{display:flex;gap:20px;align-items:center;padding:18px 0;border-bottom:1px solid #eee}.setup-row>div{flex:1}.setup-row strong{font-size:14px}.setup-row p{font-size:12px;color:#777e88;margin:7px 0}.setup-row small{font-size:11px;color:#777e88}.setup-done{color:#237151;background:#eff7f2}.setup-home{display:flex;justify-content:space-between;gap:20px;width:100%;background:#f0f4f8;border:0;border-radius:8px;padding:17px;margin-top:24px;text-align:left;color:#46566d;font:inherit;font-size:13px;cursor:pointer}.setup-members{border:1px solid #ddd;border-radius:8px;margin:16px 0;padding:14px}.setup-members label{display:inline-flex;gap:8px;margin:8px 16px 8px 0}.setup-file{display:flex;align-items:center;gap:20px;padding:20px 0;border-bottom:1px solid #e6e7e9}.setup-file>span{flex:1}.setup-file strong{display:block;font-size:14px}.setup-file small{display:block;color:#7d8490;margin-top:8px;font-size:12px}.setup-file[hidden]{display:none}.a0-archive{max-width:1120px}
+.setup-row{padding:12px 0}.setup-row p{margin:5px 0}.setup-panel .page-head p{margin:8px 0}.setup-panel progress{appearance:none;border:0;border-radius:8px;overflow:hidden;background:#e8edf3}.setup-panel progress::-webkit-progress-bar{background:#e8edf3}.setup-panel progress::-webkit-progress-value{background:#4a75b5;border-radius:8px}
+.setup-record{padding:16px 0;border-bottom:1px solid #e5e8ec}.setup-record>p{font-size:12px;color:#7e8693;margin:8px 0 12px}.setup-record h3{font-size:15px;margin:0 0 12px}.setup-record .setup-record{padding-left:14px}.setup-template-note{font-size:12px;color:#6b7582;background:#f3f6fa;padding:12px 14px;border-radius:8px;line-height:1.8}.drawer-content>h3{margin-top:24px;font-size:15px}
+
+/* One desktop canvas across the workbench, with color concentrated behind the rail. */
+@media (min-width: 1080px) {
+  body {
+    --desktop-emerald: #096247;
+    --desktop-emerald-fill: #16805b;
+    --desktop-emerald-gradient: linear-gradient(115deg, var(--desktop-emerald-fill), var(--desktop-emerald));
+  }
+
+  body:not([data-page="home"]) :is(.main, .drawer) .primary:not(:disabled) {
+    background: var(--desktop-emerald-gradient);
+  }
+
+  body:not([data-page="home"]) :is(.main, .drawer) .link {
+    color: var(--desktop-emerald);
+  }
+
+  body:not([data-page="home"]) .main :is(.setup-panel, .business-group, .list, .draft-card, .work-chat-card) {
+    border-color: rgb(255 255 255 / 85%);
+    background: #f4f8f6;
+    box-shadow: 0 0 0 1px rgb(44 87 72 / 9%),
+      0 10px 28px rgb(35 72 59 / 8%), inset 0 1px 0 #fff;
+  }
+
+  .setup-panel progress {
+    accent-color: var(--desktop-emerald-fill);
+  }
+
+  .setup-panel progress::-webkit-progress-value {
+    background: var(--desktop-emerald-gradient);
+  }
+
+  .setup-panel progress::-moz-progress-bar {
+    background: var(--desktop-emerald-gradient);
+    border-radius: 8px;
+  }
+
+  .shell {
+    position: relative;
+    --glass-rim: rgb(255 255 255 / 92%);
+    --glass-shadow: 0 8px 24px rgb(46 58 74 / 9%),
+      0 0 0 1px rgb(61 75 92 / 10%), inset 0 1px 0 #fff;
+    --workspace-paper: #f8f9fa;
+
+    background-color: var(--workspace-paper);
+    background-image:
+      url("../images/neighborhood-planting-silkscreen.webp"),
+      url("../images/neighborhood-corner-silkscreen.webp"),
+      radial-gradient(ellipse 242px 29% at 67px 15%, rgb(100 187 150 / 76%), transparent 100%),
+      radial-gradient(ellipse 256px 31% at 137px 53%, rgb(150 199 176 / 65%), transparent 100%),
+      radial-gradient(ellipse 245px 28% at 48px 93%, rgb(158 198 180 / 60%), transparent 100%),
+      radial-gradient(ellipse at right bottom, #e5ebf4, transparent 65%);
+    background-repeat: no-repeat;
+    background-position: left 76px bottom 28px, right -16px bottom 30px,
+      left top, left top, left top, right bottom;
+    background-size: clamp(190px, 21vw, 300px) auto,
+      clamp(280px, min(34vw, 55vh), 525px) auto, cover, cover, cover, 42% 52%;
+  }
+
+  /* Keep the print texture visible outside the glass and soften it beneath the nav. */
+  .shell::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 350px;
+    height: 370px;
+    pointer-events: none;
+    background: url("../images/neighborhood-canopy-silkscreen.webp") no-repeat -62px top / 588px auto;
+    opacity: .77;
+    mask-image:
+      linear-gradient(90deg, rgb(0 0 0 / 38%) 0 164px, #000 211px 267px, transparent),
+      linear-gradient(180deg, #000 0 79%, transparent 99%);
+    mask-composite: intersect;
+  }
+
+  .shell > .main > .topbar {
+    background: transparent;
+    border-image: linear-gradient(90deg, rgb(235 242 255 / 22%), var(--line) 340px) 1;
+  }
+
+  .shell > .main > .topbar .top-title {
+    color: #172640;
+    text-shadow: 0 0 8px rgb(255 255 255 / 35%);
+  }
+
+  .shell > .sidebar {
+    margin: 12px;
+    border: 1px solid rgb(255 255 255 / 84%);
+    border-radius: 20px;
+    background: transparent;
+    color: #25334b;
+    box-shadow: var(--glass-shadow);
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Keep the glass rim inside the scrollable menu, including on the current row. */
+  .shell > .sidebar .nav {
+    margin: -5px;
+    padding: 5px;
+  }
+
+  .shell > .sidebar :is(.new, .nav button) {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid transparent;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .shell > .sidebar :is(.new, .nav button, .history button) {
+    position: relative;
+    z-index: 1;
+    border-radius: 999px;
+  }
+
+  .shell > .sidebar :is(.brand-name, .new, .new svg, .nav button, .nav button.active) {
+    color: #fff;
+  }
+
+  .shell > .sidebar .brand-name,
+  .a0-login > header .a0-brand {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  /* An open roof over a folded M, drawn at the size it appears in the rail. */
+  .shell > .sidebar .brand-name::before,
+  .a0-login > header .a0-brand::before {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    margin: 0;
+    border-radius: 9px;
+    background: linear-gradient(150deg, #288d6a, #0b5943);
+    box-shadow: inset 0 0 0 1px rgb(224 255 240 / 46%), 0 2px 5px rgb(20 68 53 / 22%);
+  }
+
+  .shell > .sidebar .brand-name::after,
+  .a0-login > header .a0-brand::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 5px;
+    width: 18px;
+    height: 18px;
+    transform: translateY(-50%);
+    background: #f2fff9;
+    clip-path: path("M 0 7 L 9 0 L 18 7 L 18 10 L 9 3 L 0 10 Z M 2 10 L 4 8.5 L 9 13 L 14 8.5 L 16 10 L 16 17 L 13.5 17 L 13.5 12.3 L 9 16.2 L 4.5 12.3 L 4.5 17 L 2 17 Z");
+    pointer-events: none;
+  }
+
+  body[data-page="home"] .work-home .send {
+    background: var(--desktop-emerald-gradient);
+  }
+
+  .shell > .sidebar :is(.brand-name, .new, .nav button) {
+    text-shadow: 0 1px 4px rgb(23 52 47 / 55%), 0 2px 10px rgb(23 52 47 / 30%);
+  }
+
+  .shell > .sidebar :is(.new, .nav button) svg {
+    filter: drop-shadow(0 1px 3px rgb(23 52 47 / 46%));
+  }
+
+  .shell > .sidebar :is(.history button, .history button:hover, .community strong) {
+    color: #25334b;
+  }
+
+  .shell > .sidebar :is(.recent-head, .history .empty, .community small) {
+    color: #4e6077;
+  }
+
+  .shell > .sidebar :is(.new, .nav button, .history button, .community):hover {
+    background: rgb(255 255 255 / 13%);
+  }
+
+  .shell > .sidebar button:focus-visible {
+    outline-color: #245fcc;
+  }
+
+  .shell > .sidebar .new {
+    background: transparent;
+  }
+
+  .shell > .sidebar .sidebar-foot {
+    border-color: rgb(230 240 255 / 28%);
+  }
+
+  .shell > .sidebar {
+    --selection-glass: linear-gradient(176deg, rgb(255 255 255 / 23%),
+      rgb(245 250 255 / 9%) 43%, rgb(209 225 239 / 13%));
+    --selection-rim: inset 0 0 0 1px rgb(255 255 255 / 95%),
+      inset 0 2px 3px rgb(255 255 255 / 65%),
+      0 0 0 1px rgb(118 145 173 / 27%), 0 4px 9px rgb(47 80 110 / 11%);
+  }
+
+  .shell > .sidebar button[aria-current="page"],
+  .sidebar-glass-capsule {
+    background: var(--selection-glass);
+    box-shadow: var(--selection-rim);
+  }
+
+  .shell > .sidebar.glass-sliding button[aria-current="page"] {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .sidebar-glass-capsule {
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+  }
+
+  body[data-page="home"] .work-home .composer {
+    border-color: var(--glass-rim);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: var(--glass-shadow);
+  }
+
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    body:not([data-page="home"]) .main :is(.setup-panel, .business-group, .list, .draft-card, .work-chat-card) {
+      background: linear-gradient(150deg, rgb(255 255 255 / 76%), rgb(239 249 244 / 65%));
+      -webkit-backdrop-filter: blur(12px) saturate(108%);
+      backdrop-filter: blur(12px) saturate(108%);
+    }
+
+    .shell > .sidebar {
+      background: linear-gradient(180deg,
+        rgb(29 79 63 / 32%), rgb(36 72 56 / 27%) 320px, rgb(255 255 255 / 11%) 475px);
+      -webkit-backdrop-filter: blur(5px) saturate(122%);
+      backdrop-filter: blur(5px) saturate(122%);
+    }
+
+    body[data-page="home"] .work-home .composer {
+      background: rgb(255 255 255 / 78%);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+    }
+  }
+
+  body[data-page="home"] .work-home .composer:focus-within {
+    border-color: #287cff;
+    box-shadow: 0 0 0 3px #287cff22;
+  }
+}
