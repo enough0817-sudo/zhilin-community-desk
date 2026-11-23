@@ -640,7 +640,7 @@ const DesktopSetup=(()=>{
     const {committee:c,assistant:a}=entry,scopes=A0.store.assistantScopes(a);
     const submitted=(c.assistantWork||[]).filter(work=>work.assistantId===a.id);
     return `<main class="a0-content desktop-intake">
-      <div class="desktop-section-head"><div><h1>助理工作台</h1><p>${h(a.name)} · 助理 · 第 ${h(c.fields.term)} 届</p></div><button class="secondary" data-signout>切换账号</button></div>
+      <div class="desktop-section-head"><div><h1>助理工作台</h1><p>${h(a.name)} · 助理 · 第 ${h(c.fields.term)} 届</p></div><div class="demo-tools">${DemoReset.button}<button class="secondary" data-signout>切换账号</button></div></div>
       <section class="setup-panel desktop-setup-form">
         <h2>提交受托工作资料</h2>
         <form id="desktop-assistant-work">
